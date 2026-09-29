@@ -1,0 +1,76 @@
+name: Deploy to Anyport
+description: Deploy a container image to an Anyport app and wait for the rollout to finish.
+author: Anyport
+branding:
+  icon: upload-cloud
+  color: blue
+
+inputs:
+  token:
+    description: An Anyport service token (apt_…), from `anyport token create`. Pass it from a secret.
+    required: true
+  project:
+    description: The project the app belongs to.
+    required: true
+  app:
+    description: The app to deploy.
+    required: true
+  image:
+    description: The image to deploy, e.g. ghcr.io/acme/api:<commit sha>.
+    required: true
+  cluster:
+    description: The cluster to find the project on, when the same project name exists on more than one.
+    required: false
+    default: ""
+  wait:
+    description: Wait for the rollout to finish and fail the step if it does not.
+    required: false
+    default: "true"
+  wait-timeout:
+    description: How long to wait for the rollout, as a duration such as 5m or 90s.
+    required: false
+    default: 5m
+  publish:
+    description: Set to false to save the change as a draft to review and publish from the console.
+    required: false
+    default: "true"
+  cli-version:
+    description: The anyport CLI release to use, e.g. v0.0.15. Defaults to the newest release.
+    required: false
+    default: latest
+  endpoint:
+    description: The Anyport API endpoint, for a self-hosted console. Defaults to Anyport's own.
+    required: false
+    default: ""
+
+outputs:
+  url:
+    description: The app's first public URL, empty when it has none.
+    value: ${{ steps.deploy.outputs.url }}
+  cli-version:
+    description: The anyport CLI version the deploy ran with.
+    value: ${{ steps.install.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: install
+      shell: bash
+      env:
+        ANYPORT_CLI_VERSION: ${{ inputs.cli-version }}
+        GITHUB_API_TOKEN: ${{ github.token }}
+      run: '"$GITHUB_ACTION_PATH/install.sh"'
+
+    - id: deploy
+      shell: bash
+      env:
+        ANYPORT_TOKEN: ${{ inputs.token }}
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_APP: ${{ inputs.app }}
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_CLUSTER: ${{ inputs.cluster }}
+        INPUT_WAIT: ${{ inputs.wait }}
+        INPUT_WAIT_TIMEOUT: ${{ inputs.wait-timeout }}
+        INPUT_PUBLISH: ${{ inputs.publish }}
+        INPUT_ENDPOINT: ${{ inputs.endpoint }}
+      run: '"$GITHUB_ACTION_PATH/deploy.sh"'
